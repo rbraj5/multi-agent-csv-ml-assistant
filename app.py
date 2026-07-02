@@ -136,7 +136,7 @@ def load_data(uploaded_file) -> pd.DataFrame:
 
 
 def main() -> None:
-    st.set_page_config(page_title="Multi-Agent CSV ML Assistant", page_icon="📊", layout="wide")
+    st.set_page_config(page_title="Multi-Agent CSV ML Assistant", layout="wide")
     st.title("Multi-Agent CSV ML Assistant")
 
     uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
