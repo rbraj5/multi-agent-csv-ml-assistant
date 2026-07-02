@@ -44,8 +44,15 @@ def main() -> None:
     with st.expander("Data Quality Assessment", expanded=True):
         st.json(state["quality"].model_dump())
 
+    if state.get("readiness"):
+        with st.expander("Readiness Gate", expanded=True):
+            st.json(state["readiness"].model_dump())
+
     with st.expander("Model Recommendation", expanded=True):
         st.json(state["recommendation"].model_dump())
+
+    with st.expander("Graph Trace", expanded=False):
+        st.json([event.model_dump() for event in state["trace_events"]])
 
     st.subheader("Dataset Review Report")
     st.markdown(state["report"])

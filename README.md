@@ -9,11 +9,12 @@ The system supports early-stage machine learning discovery work where teams need
 ## LangGraph Workflow
 
 ```text
-profile_dataset -> assess_data_quality -> recommend_models -> synthesize_report
+profile_dataset -> assess_data_quality -> review_readiness? -> recommend_models -> synthesize_report
 ```
 
 - **profile_dataset:** calculates dataset shape, data types, missing values, and duplicate rows.
 - **assess_data_quality:** converts profile findings into cleaning recommendations.
+- **review_readiness:** conditionally checks modelling risks such as missing values, duplicates, class imbalance, and target-leakage indicators.
 - **recommend_models:** infers target type and recommends baseline model families.
 - **synthesize_report:** produces a Markdown report through deterministic fallback or optional LangChain/OpenAI synthesis.
 
@@ -28,7 +29,15 @@ profile_dataset -> assess_data_quality -> recommend_models -> synthesize_report
 - Dataset preview and target-column selection
 - LangGraph node execution trace in the UI
 - Structured profile, quality, and model recommendation outputs
+- Conditional readiness gate for datasets that need modelling review
+- Class-balance and target-leakage checks when a target is selected
 - Downloadable dataset review report for handoff or documentation
+
+## Productionization Notes
+
+The graph includes conditional routing rather than a purely linear flow. Datasets with selected targets, missing values, duplicate rows, or high-cardinality fields pass through a readiness gate before model recommendations. Clean untargeted datasets can skip that review branch. This mirrors production ML intake workflows where modelling advice should be gated by data quality and leakage checks.
+
+Future extensions would include train/test split validation, baseline model benchmarking, feature drift checks, automated data contracts, experiment tracking, and persisted workflow checkpoints.
 
 ## Repository Structure
 

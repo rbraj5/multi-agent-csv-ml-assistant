@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 from sklearn.utils.multiclass import type_of_target
 
-from src.schemas import DataQualityAssessment, DatasetProfile, ModelRecommendation
+from src.schemas import DataQualityAssessment, DatasetProfile, ModelRecommendation, ReadinessReview
 
 
 def profile_dataset(df: pd.DataFrame) -> DatasetProfile:
@@ -22,6 +22,7 @@ def profile_dataset(df: pd.DataFrame) -> DatasetProfile:
         categorical_columns=categorical_cols,
         duplicate_rows=int(df.duplicated().sum()),
         missing_values=missing,
+        unique_counts={column: int(df[column].nunique(dropna=True)) for column in df.columns},
     )
 
 
@@ -51,6 +52,61 @@ def assess_data_quality(df: pd.DataFrame, profile: DatasetProfile) -> DataQualit
     return DataQualityAssessment(
         recommendations=recommendations,
         high_cardinality_columns=high_cardinality,
+    )
+
+
+def review_readiness(
+    df: pd.DataFrame,
+    profile: DatasetProfile,
+    quality: DataQualityAssessment,
+    target_column: str | None,
+) -> ReadinessReview:
+    risks: list[str] = []
+    actions: list[str] = []
+    leakage_warnings: list[str] = []
+    class_balance: dict[str, int] = {}
+
+    if profile.missing_values:
+        risks.append("Dataset contains missing values.")
+        actions.append("Resolve missing-value handling before model training.")
+    if profile.duplicate_rows:
+        risks.append("Dataset contains duplicate rows.")
+        actions.append("Remove or justify duplicate records before evaluation.")
+    if quality.high_cardinality_columns:
+        risks.append("Dataset contains high-cardinality categorical columns.")
+        actions.append("Review encoding strategy for high-cardinality fields.")
+
+    if target_column:
+        target = df[target_column].dropna()
+        class_balance = {str(label): int(count) for label, count in target.value_counts().items()}
+        if len(class_balance) == 2:
+            minority = min(class_balance.values())
+            majority = max(class_balance.values())
+            if minority / max(majority, 1) < 0.25:
+                risks.append("Binary target appears imbalanced.")
+                actions.append("Use stratified splits and imbalance-aware metrics.")
+
+        target_terms = {"target", "label", "outcome", "readmitted", "churned", "defaulted"}
+        for column in df.columns:
+            if column == target_column:
+                continue
+            lowered = column.lower()
+            if any(term in lowered for term in target_terms):
+                leakage_warnings.append(f"`{column}` may encode target-like information.")
+        if leakage_warnings:
+            risks.append("Potential target leakage indicators were found.")
+            actions.append("Review target-like feature names before modelling.")
+    else:
+        risks.append("No target column selected.")
+        actions.append("Select a target column before task-specific modelling.")
+
+    status = "Ready for baseline modelling" if not risks else "Needs review before modelling"
+    return ReadinessReview(
+        status=status,
+        risks=risks,
+        required_actions=actions,
+        class_balance=class_balance,
+        leakage_warnings=leakage_warnings,
     )
 
 
